@@ -166,8 +166,8 @@ main(int argc, char *argv[])
 			for (ifa=0; ifa<nfadc; ifa++) {
 				int slot = faSlot(ifa);
 				if (channel_mask[slot-1]) {
-					double time=(data2[ifa][16]-data1[ifa][16]); // in units of 4 ns
-					time /= 250000; // in units of 1 us
+					double time=(data2[ifa][16]-data1[ifa][16]); // in units of 2048 ns
+					time *= 2048e-9; // in units of seconds
 					printf("Mod %2i   ", faSlot(ifa));
 					for (chan=0; chan<=16; chan++) {
 						double rate = (data2[ifa][chan]-data1[ifa][chan])/time;

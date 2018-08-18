@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include "jvme.h"
 #include "fadcLib.h"
+#include "fadcLib_extensions.h"
 
 #define FADC_ADDR 0xed0000
 
@@ -32,7 +33,7 @@ main(int argc, char *argv[])
 {
 	int DEBUG=4;
 	if (argc>1) {
-		DEBUG = argv[1];
+		DEBUG = atoi(argv[1]);
 		printf("Set DEBUG to %i\n",DEBUG);
 	}
 
@@ -41,7 +42,7 @@ main(int argc, char *argv[])
 	int i,j, iflag;
 	unsigned int scalerdata1[FA_MAX_BOARDS][17];
 	unsigned int scalerdata2[FA_MAX_BOARDS][17];
-	unsigned int OrigDAC[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
+	//unsigned int OrigDAC[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
 	unsigned int OrigThresh[FA_MAX_BOARDS];
 	float highestrate[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
 	int highestthreshval[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
@@ -113,7 +114,7 @@ main(int argc, char *argv[])
 		//}
 		// loop over modules to read scalers 
 		for(ifa=0; ifa<nfadc; ifa++) {
-			faReadScalers(faSlot(ifa), &scalerdata1[ifa], 0xffff, ScalerReadFlag);
+			faReadScalers(faSlot(ifa), scalerdata1[ifa], 0xffff, ScalerReadFlag);
 			if (DEBUG>2) { // print the first read
 				printf("Mod %2i   ", faSlot(ifa));
 				for (chan=0; chan<=16; chan++) {
@@ -127,7 +128,7 @@ main(int argc, char *argv[])
 		usleep(sleepval);
 		// loop over modules to read scalers 
 		for(ifa=0; ifa<nfadc; ifa++) {
-			faReadScalers(faSlot(ifa), &scalerdata2[ifa], 0xffff, ScalerReadFlag);
+			faReadScalers(faSlot(ifa), scalerdata2[ifa], 0xffff, ScalerReadFlag);
 			if (DEBUG>3) { // printf the second read
 				printf("Mod %2i   ", faSlot(ifa));
 				for (chan=0; chan<=16; chan++) {

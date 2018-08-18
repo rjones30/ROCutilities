@@ -63,10 +63,22 @@ DEFS = -DCPU=MC68040 -DVXWORKS -DVXWORKS68K51
 INCS = -Wall -mc68020 -fvolatile -fstrength-reduce -nostdinc -I. -I$(INCDIR)
 endif
 
-PROGS = faSetThresholds faPrintThresholds faSetDAC faPrintDAC faCalibPedestals faCheckPedestals faTweakPedestals faPrintScalers faPrintScalerRates faMapRates \
+PROGS = fadcLib_extensions.o faSetThresholds faPrintThresholds faSetDAC faPrintDAC faCalibPedestals faCheckPedestals faTweakPedestals faPrintScalers faPrintScalerRates faMapRates \
         faPrintScalerRate1
 
 all: echoarch $(PROGS)
+
+faCalibPedestals: faCalibPedestals.c fadcLib_extensions.c
+	$(CC) $(CFLAGS) -o $@ $^ -lrt -ljvme -lfadc
+
+faCheckPedestals: faCheckPedestals.c fadcLib_extensions.c
+	$(CC) $(CFLAGS) -o $@ $^ -lrt -ljvme -lfadc
+
+faTweakPedestals: faTweakPedestals.c fadcLib_extensions.c
+	$(CC) $(CFLAGS) -o $@ $^ -lrt -ljvme -lfadc
+
+faMapRates: faMapRates.c fadcLib_extensions.c
+	$(CC) $(CFLAGS) -o $@ $^ -lrt -ljvme -lfadc
 
 fadcLibTest: fadcLibTest.c
 	$(CC) $(CFLAGS) -o $@ $(@:%=%.c) $(LIBS_$@) -lrt -ljvme -lfadc

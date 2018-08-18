@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include "jvme.h"
 #include "fadcLib.h"
+#include "fadcLib_extensions.h"
 
 #define FADC_ADDR 0xed0000
 
@@ -49,18 +50,18 @@ main(int argc, char *argv[])
 
 	int DEBUG=0;
 	if (argc>1) {
-		DEBUG = argv[1];
+		DEBUG = atoi(argv[1]);
 		printf("Set DEBUG to %i\n",DEBUG);
 	}
 
 	int shortsleepval=10000;
-	int longsleepval=1000000;
+	//int longsleepval=1000000;
 	GEF_STATUS status;
 	int i,j;
 	int ifa, chan;
 	unsigned int scalerdata1[FA_MAX_BOARDS][17];
 	unsigned int scalerdata2[FA_MAX_BOARDS][17];
-	unsigned int OrigDAC[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
+	unsigned short OrigDAC[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
 	unsigned int OrigThresh[FA_MAX_BOARDS];
 	float highestrate[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
 	int highestdacval[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
@@ -110,7 +111,7 @@ main(int argc, char *argv[])
 	
 	// save initial DAC and threshold values
 	for(ifa=0; ifa<nfadc; ifa++) 
-		faReadDACs(faSlot(ifa), OrigDAC);
+		faGetDAC(faSlot(ifa), OrigDAC[ifa]);
 	for(ifa=0; ifa<nfadc; ifa++) 
 		OrigThresh[ifa] = faGetTriggerPathThreshold(faSlot(ifa));
 
@@ -139,7 +140,7 @@ main(int argc, char *argv[])
 		}
 		// loop over modules to read scalers 
 		for(ifa=0; ifa<nfadc; ifa++) {
-			faReadScalers(faSlot(ifa), &scalerdata1[ifa], 0xffff, ScalerReadFlag);
+			faReadScalers(faSlot(ifa), scalerdata1[ifa], 0xffff, ScalerReadFlag);
 			if (DEBUG>2) { // print the first read
 				printf("Mod %2i   ", faSlot(ifa));
 				for (chan=0; chan<=16; chan++) {
@@ -153,7 +154,7 @@ main(int argc, char *argv[])
 		usleep(shortsleepval);
 		// loop over modules to read scalers 
 		for(ifa=0; ifa<nfadc; ifa++) {
-			faReadScalers(faSlot(ifa), &scalerdata2[ifa], 0xffff, ScalerReadFlag);
+			faReadScalers(faSlot(ifa), scalerdata2[ifa], 0xffff, ScalerReadFlag);
 			if (DEBUG>3) { // printf the second read
 				printf("Mod %2i   ", faSlot(ifa));
 				for (chan=0; chan<=16; chan++) {
@@ -199,11 +200,10 @@ main(int argc, char *argv[])
 	// Make a date time label
 	time_t result = time(NULL); 
 	const char *timestring = ctime(&result);
-	char datetimelabel[255];
-	sprintf(datetimelabel,"");
+	char datetimelabel[255] = {0};
 	printf("%s",ctime(&result));
 	char *pch;
-	pch = strtok (timestring," :");
+	pch = strtok ((char*)timestring," :");
 	int count=0;
 	while (pch != NULL) {
 		if (count==3) sprintf(datetimelabel,"%s_",datetimelabel);
@@ -263,12 +263,12 @@ main(int argc, char *argv[])
 		printf("measuring pedestal rate\n");
 		for(ifa=0; ifa<nfadc; ifa++) {
 			faSetDAC(faSlot(ifa), dacval, 0xffff);
-			faReadScalers(faSlot(ifa), &scalerdata1[ifa], 0xffff, ScalerReadFlag);
+			faReadScalers(faSlot(ifa), scalerdata1[ifa], 0xffff, ScalerReadFlag);
 		}
 		usleep(10000000);
 		for(ifa=0; ifa<nfadc; ifa++) {
 			printf("Mod %2i   ", faSlot(ifa));
-			faReadScalers(faSlot(ifa), &scalerdata2[ifa], 0xffff, ScalerReadFlag);
+			faReadScalers(faSlot(ifa), scalerdata2[ifa], 0xffff, ScalerReadFlag);
 			double time=scalerdata2[ifa][16]-scalerdata1[ifa][16];
 			for (chan=0; chan<=15; chan++) {
 				if (chan==8) printf("\n         ");

@@ -30,6 +30,7 @@ cd /gluonfs1/home/dalton/svn/daq_dev_vers/daq/vme/src/vmefa/test
 #include <stdio.h>
 #include "jvme.h"
 #include "fadcLib.h"
+#include "fadcLib_extensions.h"
 
 #define FADC_ADDR 0xed0000
 
@@ -75,8 +76,8 @@ main(int argc, char *argv[])
 	int ifa, chan;
 	unsigned int scalerdata1[FA_MAX_BOARDS][17];
 	unsigned int scalerdata2[FA_MAX_BOARDS][17];
-	unsigned int OrigDAC[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
-	unsigned int NewDAC[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
+	unsigned short OrigDAC[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
+	unsigned short NewDAC[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
 	unsigned int OrigThresh[FA_MAX_BOARDS];
 	float highestrate[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
 	int highestdacval[FA_MAX_BOARDS][FA_MAX_ADC_CHANNELS];
@@ -126,7 +127,7 @@ main(int argc, char *argv[])
 	
 	// Save initial DAC and threshold values
 	for(ifa=0; ifa<nfadc; ifa++) 
-		faReadDACs(faSlot(ifa), OrigDAC[ifa]);
+		faGetDAC(faSlot(ifa), OrigDAC[ifa]);
 	for(ifa=0; ifa<nfadc; ifa++) 
 		OrigThresh[ifa] = faGetTriggerPathThreshold(faSlot(ifa));
 
@@ -166,7 +167,7 @@ main(int argc, char *argv[])
 		}
 		// loop over modules to read scalers 
 		for(ifa=0; ifa<nfadc; ifa++) {
-			faReadScalers(faSlot(ifa), &scalerdata1[ifa], 0xffff, ScalerReadFlag);
+			faReadScalers(faSlot(ifa), scalerdata1[ifa], 0xffff, ScalerReadFlag);
 			if (DEBUG>2) { // print the first read
 				printf("Mod %2i   ", faSlot(ifa));
 				for (chan=0; chan<FA_MAX_ADC_CHANNELS; chan++) {
@@ -180,7 +181,7 @@ main(int argc, char *argv[])
 		usleep(sleepval);
 		// loop over modules to read scalers 
 		for(ifa=0; ifa<nfadc; ifa++) {
-			faReadScalers(faSlot(ifa), &scalerdata2[ifa], 0xffff, ScalerReadFlag);
+			faReadScalers(faSlot(ifa), scalerdata2[ifa], 0xffff, ScalerReadFlag);
 			if (DEBUG>3) { // printf the second read
 				printf("Mod %2i   ", faSlot(ifa));
 				for (chan=0; chan<FA_MAX_ADC_CHANNELS; chan++) {
@@ -239,12 +240,11 @@ main(int argc, char *argv[])
 	// Make a date time label
 	time_t result = time(NULL); 
 	const char *timestring = ctime(&result);
-	char datetimelabel[255];
-	sprintf(datetimelabel,"");
+	char datetimelabel[255] = {0};
 	int count=0;
 	printf("%s",ctime(&result));
 	char *pch;
-	pch = strtok (timestring," :");
+	pch = strtok ((char*)timestring," :");
 	while (pch != NULL) {
 		if (count==3) sprintf(datetimelabel,"%s_",datetimelabel);
 		if (count==4) sprintf(datetimelabel,"%sh",datetimelabel);
