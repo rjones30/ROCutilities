@@ -1,0 +1,59 @@
+################################################################################
+#
+# README for fadclib CODA Readout list (with Intel-based Linux ROC)
+#
+# Author:
+#      Bryan Moffit
+#      TJNAF Data Acquisition Group
+#
+# Revision History:
+#      Initial Revision
+#
+################################################################################
+
+The primary readout list that was formally compiled using "makelist" has been
+replaced with that compiled with a "Makefile".  
+
+Compile the primary and secondary readout lists with:
+   make -f Makefile-rol fadc_list.so event_list.so
+ OR (if fadc_list.c is in the same directory as the fadcLib)
+   make rol
+
+In the CODA mSQL database the primary readout list should be indicated as:
+   PATH/fadc_list.so userStrings
+
+and secondary readout list as:
+   PATH/event_list.so userStrings
+
+Replace PATH with the absolute path of each .so file.  userStrings may be replaced
+with whatever strings are used by usrstrutils.c (if used), but there MUST be at
+least one item defined (even if usrstrutils.c is not used).
+
+Primary List specifics:
+  Each of these routines is linked to a CODA transition (and MUST be defined):
+    DOWNLOAD:  rocDownload()
+    PRESTART:  rocPrestart()
+    GO      :  rocGo()
+    END     :  rocEnd();
+
+  The trigger routine is defined with 
+            :  rocTrigger(int arg)
+
+  Define the event pool and lengths using compilation defintions:
+   #define MAX_EVENT_POOL    400
+   #define MAX_EVENT_LENGTH   1024*100      /* Size in Bytes */
+
+  Define the interrupt source with (e.g.):
+   #define TIR_MODE TIR_EXT_POLL
+
+   These are the defined sources:
+      TIR_EXT_POLL  - trigger into TIR. Polling method to determing if trigger is present.
+      TIR_TS_POLL   - trigger into TS.  Polling method to determing if trigger is present.
+      TIR_EXT_INT   - trigger into TIR. CPU Interrupt method to determine if trigger is present.
+      TIR_TS_INT    - trigger into TS.  CPU Interrupt method to determine if trigger is present.
+
+   For the Linux VME controller, the polling method may reduce the BUSY time by up
+   to 20 microseconds.
+
+
+   

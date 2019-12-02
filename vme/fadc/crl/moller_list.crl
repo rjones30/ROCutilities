@@ -1,0 +1,241 @@
+# 
+#  General User readout list
+#
+#    David Abbott, TJNAF 2000
+
+readout list GEN_USER
+maximum 8192,400
+general readout
+
+# A16 Address for FLEXIO Module
+const TRIG_ADDR=0x0ee0
+# Number of Input Cards
+const FLEXIO_INPUT=2
+# Flag=0 means interrupt mode
+const FLEXIO_MODE=0
+
+const FADC_ADDR = 0xed0000
+const FADC_BLOCK_MODE = 1
+const FADC_EVENTS_PER_BLOCK = 10
+const MAX_FADC_DATA = 2000
+const FADC_SUM_THRESH = 9000
+const FADC_CL_PRESCALE = 1
+const FADC_CR_PRESCALE = 1
+
+extern int bigendian_out;
+extern int fadcID[20];
+int FA_SLOT;
+unsigned int flexio_di_cnt;
+
+begin download
+
+# When sending to a Linux Host set bigendian_out = 0
+bigendian_out = 0;
+
+#Setup flexio board
+  flexioInit(TRIG_ADDR,0);
+
+
+# Initialize FADC library for Moller Operation
+# Requires Special "fadcMolLib.o" object loaded
+famInit(FADC_ADDR,0);
+FA_SLOT = fadcID[0];
+
+  log inform "User Download Executed"
+
+end download
+    
+begin prestart
+
+  variable jj, adc_id, fd1
+
+  log inform "Entering User Prestart"
+
+  init trig source GEN
+  link async trig source GEN 1 to usrtrig and usrtrig_done
+  event type 1 then read GEN 1
+
+  flexio_di_cnt = 0;
+
+# Assume FADCs have been Initialized at boot or in download
+# Setup FADC Programming
+  faSetBlockLevel(FA_SLOT,FADC_EVENTS_PER_BLOCK);
+# for Block Reads
+  faEnableBusError(FA_SLOT);
+
+
+# Set All channel thresholds to 0
+  faSetThreshold(FA_SLOT,0,0xffff);
+
+
+# Setup option 1 processing - RAW Window Data     <--
+#       option 2            - RAW Pulse Data
+#       option 3            - Integral Pulse Data
+# Setup 200 nsec latency (PL  = 50) 
+# Setup  80 nsec Window  (PTW = 20)
+# Setup Pulse widths of 36ns (NSB(3)+NSA(6) = 9) 
+# Setup up to 1 pulse processed
+# Setup for both ADC banks(0 - all channels 0-15)
+  faSetProcMode(FA_SLOT,1,50,20,3,6,1,0);
+
+# Setup Moller FPGA Processing
+# See Moller Documentaion for details
+  famSetSumThresh(0,0,FADC_SUM_THRESH);
+  famSetSumThresh(0,1,FADC_SUM_THRESH);
+
+  famSetPrescale(0,0,FADC_CL_PRESCALE);
+  famSetPrescale(0,1,FADC_CR_PRESCALE);
+
+
+
+# Print out status
+  faClear(FA_SLOT);
+  faStatus(FA_SLOT,0);
+  faMollerStatus(0);
+
+
+  log inform "User Prestart Executed"
+
+end prestart
+
+begin end
+
+#FADC Disable
+  famDisable(FA_SLOT,0,0);
+
+# Delay before disabling Interrupts
+  taskDelay(4);
+
+# Disable FLEXIO
+  CDODISABLE(GEN,1,FLEXIO_INPUT);
+
+#FADC Event status - Is all data read out
+  faStatus(FA_SLOT,0);
+  printf("\n");
+  famScalStatus(1);
+
+  printf("\nInterrupt Counts: Card 1: %8d \n",flexioIntCount[0]);
+  printf("                  Card 2: %8d \n",flexioIntCount[1]);
+  printf("              Double Int: %8d \n\n",flexio_di_cnt);
+
+  log inform "User End Executed"
+
+end end
+
+begin pause
+
+  CDODISABLE(GEN,1,FLEXIO_INPUT);
+
+  log inform "User Pause Executed"
+
+end pause
+
+begin go
+  
+  log inform "Entering User Go"
+
+# Send Sync Reset to FADC
+  faSync(FA_SLOT);
+
+# Enable Flexio
+  CDOENABLE(GEN,1,FLEXIO_INPUT);
+
+# Enable Moller
+  famEnable();
+
+end go
+
+begin trigger usrtrig
+
+  variable ii, stat, csr, nwrds
+
+  rol->dabufp = (long *) 0;
+  open event type EVTYPE of BT_UI4
+
+%%
+  int nwrds = 0;
+  int nscal = 0;
+
+  if(flexio_ds[0]) {
+    *rol->dabufp++ = 0xda000000;
+    /* Check if a Block of data is available */
+    for(ii=0;ii<100;ii++) {
+       stat = faBready(FA_SLOT);
+       if (stat>0) {
+         *rol->dabufp++ = ii;
+         break;
+       }
+    }
+    if(stat > 0) {
+      nwrds = faReadBlock(FA_SLOT,rol->dabufp,MAX_FADC_DATA,FADC_BLOCK_MODE);
+      if(nwrds<=0) {
+         logMsg("ERROR: FADC Block Read Failed - Status 0x%x\n",nwrds,0,0,0,0,0);
+         *rol->dabufp++ = 0xda000bad;
+         faClear(FA_SLOT);
+      } else {
+         rol->dabufp += nwrds;
+      }
+    }else{
+      logMsg("ERROR: NO data in FADC  datascan = 0x%x\n",stat,0,0,0,0,0);
+      faClear(FA_SLOT);
+    }
+  }
+
+  if(flexio_ds[1]) {
+    *rol->dabufp++ = 0xda000011;
+    nscal = famReadScalers(rol->dabufp);
+    if(nscal>0) {
+      rol->dabufp += nscal;
+
+    }else if(nscal==0) {  /* Busy - Loop until we get all data*/
+      for(ii=0;ii<10;ii++) {
+        nscal = famReadScalers(rol->dabufp);
+        if(nscal>0) {
+          rol->dabufp += nscal;
+          break;
+        }
+     }
+     if(ii>0) logMsg("Scaler ReadOut - Busy!! (ii=%d)\n",ii,0,0,0,0,0);
+
+    }else{
+      logMsg("WARN: Scaler FIFO Empty\n",0,0,0,0,0,0);
+      *rol->dabufp++ = 0xda010bad;
+    }
+  }
+
+%%
+
+ close event
+
+end trigger
+
+begin done usrtrig
+
+end done
+
+begin done
+
+# Re-enable Trigger Source here
+%%
+  if((flexio_ds[0])&(flexio_ds[1])) {
+     flexio_ds[0] = flexio_ds[1] = 0;
+     flexio_di_cnt++;
+     flexioIntAck(2);
+     famMollerDataAck();
+  }else if(flexio_ds[0]) {
+     flexio_ds[0] = 0;
+     flexioIntAck(0);
+     famMollerDataAck();
+  }else if(flexio_ds[1]) {
+     flexio_ds[1] = 0;
+     flexioIntAck(1);
+  }
+%%
+
+end done
+
+begin status
+
+end status
+
+

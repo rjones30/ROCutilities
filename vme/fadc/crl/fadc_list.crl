@@ -1,0 +1,191 @@
+#  Source for generic VME readout using a
+#  TJNAF trigger supervisor interface register (TIR)
+#  as a source for external interrupts
+#
+#    David Abbott, TJNAF 1996
+
+readout list VME1
+maximum 16384,400
+vme readout
+#polling
+#ts control
+
+
+const TIR_ADDR = 0x0ed0
+const FADC_ADDR = 0xed0000
+const FADC_BLOCK_MODE = 1
+const MAX_FADC_DATA = 4000
+
+extern int bigendian_out;
+extern int fadcID[20];
+int FA_SLOT;
+
+
+begin download
+
+  variable res
+
+# If the ROC is sending data to Little-Endian EB
+# e.g. a x86 Linux CPU then bigendian_out = 0.
+# Unless the ROC is also running on a Little-Endian
+# machine. Then set bigendian_out=1.
+  bigendian_out = 0;
+
+
+# Setup TIR
+  tirInit(TIR_ADDR);
+
+# Initialize FADC library and Modules for standalone
+# and Front Panel Triggers
+faInit(FADC_ADDR,0,1,0);
+FA_SLOT = fadcID[0];
+
+  
+  log inform "User Download Executed"
+
+end download
+    
+begin prestart
+
+  log inform "Entering User Prestart"
+
+  init trig source VME
+  link async trig source VME 1 to usrtrig and usrtrig_done
+  event type 1 then read VME 1
+
+# Assume FADCs have been Initialized at boot or in download
+# Setup FADC Programming
+  faSetBlockLevel(FA_SLOT,1);
+# for Block Reads
+  faEnableBusError(FA_SLOT);
+# for Single Cycle Reads
+#  faDisableBusError(FA_SLOT);
+
+# Set All channel thresholds to 0
+  faSetThreshold(FA_SLOT,0,0xffff);
+
+
+# Setup option 1 processing - RAW Window Data     <--
+#       option 2            - RAW Pulse Data
+#       option 3            - Integral Pulse Data
+# Setup 200 nsec latency (PL  = 50) 
+# Setup  80 nsec Window  (PTW = 20)
+# Setup Pulse widths of 36ns (NSB(3)+NSA(6) = 9) 
+# Setup up to 1 pulse processed
+# Setup for both ADC banks(0 - all channels 0-15)
+  faSetProcMode(FA_SLOT,1,50,20,3,6,1,0);
+
+
+# Print out status
+  faStatus(FA_SLOT,0);
+  
+  log inform "User Prestart Executed"
+
+end prestart
+
+begin end
+
+  CDODISABLE(VME,1,0);
+
+#FADC Disable
+  faDisable(FA_SLOT,0,0);
+
+#FADC Event status - Is all data read out
+  faStatus(FA_SLOT,0);
+
+  log inform "User End Executed"
+
+end end
+
+begin pause
+
+  CDODISABLE(VME,1,0);
+
+  log inform "User Pause Executed"
+
+end pause
+
+begin go
+
+  variable outval
+  
+  log inform "Entering User Go"
+
+# Enable FADC
+  faEnable(FA_SLOT,0,0);
+
+  taskDelay(1);
+  
+# Send Sync Reset to FADC
+  faSync(FA_SLOT);
+
+  taskDelay(1);
+
+  CDOENABLE(VME,1,0);
+
+end go
+
+begin trigger usrtrig
+
+ variable ii, stat, csr
+
+ rol->dabufp = (long *) 0;
+ open event type EVTYPE of BT_UI4
+
+%%
+ int nwrds=0;
+ /* Check if a Block of data is available */
+ for(ii=0;ii<100;ii++) {
+    stat = faBready(FA_SLOT);
+    if (stat>0) {
+      *rol->dabufp++ = ii;
+      break;
+    }
+ }
+ if(stat > 0) {
+   nwrds = faReadBlock(FA_SLOT,rol->dabufp,MAX_FADC_DATA,FADC_BLOCK_MODE);
+   if(nwrds<=0) {
+      logMsg("ERROR: FADC Block Read Failed - Status 0x%x\n",nwrds,0,0,0,0,0);
+      *rol->dabufp++ = 0xda000bad;
+      faClear(FA_SLOT);
+   } else {
+      rol->dabufp += nwrds;
+   }
+ }else{
+   logMsg("ERROR: NO data in FADC  datascan = 0x%x\n",stat,0,0,0,0,0);
+   faClear(FA_SLOT);
+ }
+
+ /* Check that there is no data left */
+  stat = faDready(FA_SLOT);
+  if(stat>0) {
+   csr = faReadCSR(FA_SLOT);
+   logMsg("ERROR: Data still in FADC (event %d, scan 0x%x csr 0x%x ) - clearing\n",
+	*(rol->nevents),stat,csr,0,0,0);
+   faClear(FA_SLOT);
+  }
+
+%%
+
+ close event
+
+end trigger
+
+begin done usrtrig
+
+
+end done
+
+
+begin done
+
+# Acknowledge tir register
+  CDOACK(VME,1,0);
+
+end done
+
+begin status
+
+end status
+
+
