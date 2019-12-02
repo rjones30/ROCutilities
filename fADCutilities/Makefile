@@ -19,6 +19,8 @@ ifndef WIND_BASE
   WIND_BASE = /site/vxworks/5.5/ppc
 endif
 
+ROOTSYS = /apps/root/PRO
+ROOTLIBS = $(shell $(ROOTSYS)/bin/root-config --libs) -lXMLIO
 
 ifeq ($(OSNAME),SunOS)
 CODALIB = $(CODA)/$(OSNAME)/lib
@@ -37,13 +39,25 @@ endif
 
 CODALIB = $(CODA)/$(OSNAME)/lib
 CODAINC = $(CODA)/common/include
-CFLAGS = -O $(DEFS) -Wall -O2 \
-		-I${LINUXVME_INC} -I. \
-		-I$(CODA)/linuxvme/vme \
-		-I$(CODA)/linuxvme/fadc \
-		-L${LINUXVME_LIB} -L. -DJLAB -g \
-		-L$(CODA)/linuxvme/jvme \
-		-L$(CODA)/linuxvme/fadc
+
+USE_NEW_CODA = 1
+ifndef USE_NEW_CODA
+	CFLAGS = -O $(DEFS) -Wall -O2 \
+		-I. \
+		-I$(CODA)/linuxvme/include \
+		-I/apps/root/PRO/root/include \
+		-L. -g \
+		-L$(CODA)/linuxvme/lib
+else
+	CFLAGS = -O $(DEFS) -Wall -O2 \
+		-g -I. \
+		-I../vme/jvme \
+		-I../vme/fadc \
+		-I/apps/root/PRO/root/include \
+		-L. \
+		-L../vme/jvme \
+		-L../vme/fadc
+endif
 AR = ar
 RANLIB = ranlib
 endif
@@ -63,8 +77,8 @@ DEFS = -DCPU=MC68040 -DVXWORKS -DVXWORKS68K51
 INCS = -Wall -mc68020 -fvolatile -fstrength-reduce -nostdinc -I. -I$(INCDIR)
 endif
 
-PROGS = fadcLib_extensions.o faSetThresholds faPrintThresholds faSetDAC faPrintDAC faCalibPedestals faCheckPedestals faTweakPedestals faPrintScalers faPrintScalerRates faMapRates \
-        faPrintScalerRate1
+PROGS = faSetThresholds faPrintThresholds faSetDAC faPrintDAC faCalibPedestals faCheckPedestals faTweakPedestals faPrintScalers faPrintScalerRates faMapRates \
+        faPrintScalerRate1 faDoThresholdScan faPrintStatus faSet1Threshold faScope
 
 all: echoarch $(PROGS)
 
@@ -84,10 +98,18 @@ fadcLibTest: fadcLibTest.c
 	$(CC) $(CFLAGS) -o $@ $(@:%=%.c) $(LIBS_$@) -lrt -ljvme -lfadc
 
 fadcReadoutTest: fadcReadoutTest.c
-	$(CC) $(CFLAGS) -o $@ $(@:%=%.c) $(LIBS_$@) -lrt -ljvme -lfadc -lti -lsd -lts
+	#$(CC) $(CFLAGS) -o $@ $(@:%=%.c) $(LIBS_$@) -lrt -ljvme -lfadc -lti -lsd -lts
+	$(CC) $(CFLAGS) -o $@ $(@:%=%.c) $(LIBS_$@) -lrt -ljvme -lfadc
 
 historyBufferTest: historyBufferTest.c
-	$(CC) $(CFLAGS) -o $@ $(@:%=%.c) $(LIBS_$@) -lrt -ljvme -lfadc -lti -lsd -lts
+	#$(CC) $(CFLAGS) -o $@ $(@:%=%.c) $(LIBS_$@) -lrt -ljvme -lfadc -lti -lsd -lts
+	$(CC) $(CFLAGS) -o $@ $(@:%=%.c) $(LIBS_$@) -lrt -ljvme -lfadc
+
+faScope: faScope.cc fadc250.o
+	$(CXX) $(CFLAGS) -o $@ $^ -lrt -ljvme -lfadc -L$(ROOTSYS)/lib $(ROOTLIBS)
+
+fadc250.o: fadc250.cc fadc250.hh
+	$(CXX) -c $(CFLAGS) $<
 
 %: %.c
 	echo "Making $@"
