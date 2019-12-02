@@ -37,9 +37,10 @@ main(int argc, char *argv[])
 	short int thresh;
 
 	int ithr;
-	int threshold_seq_length = 62;
-	int threshold_seq[62] =
-	{110, 112, 114, 116, 118, 120,
+	int threshold_seq_length = 67;
+	int threshold_seq[67] =
+	{100, 102, 104, 106, 108,
+	 110, 112, 114, 116, 118, 120,
 	 124, 128, 132, 136, 140,
 	 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 271, 280, 290, 300,
 	 320, 340, 360, 380, 400, 420, 440, 460, 480, 500, 520, 540, 560, 580, 600,
@@ -130,7 +131,7 @@ main(int argc, char *argv[])
 			if (channel_mask[slot-1]) {
 				//faSetThreshold(slot, thresh, channel_mask[slot-1]);
 				faSetTriggerPathThreshold(slot, thresh);
-				faReadScalers(slot, (volatile unsigned int*)&data1[ifa], 0xffff, iFlag);
+				faReadScalers(slot, data1[ifa], 0xffff, iFlag);
 				if (DEBUG>2) { // print the first read
 					printf("Mod %2i   ", faSlot(ifa));
 					for (chan=0; chan<=16; chan++) {
@@ -149,7 +150,7 @@ main(int argc, char *argv[])
 		for (ifa=0; ifa<nfadc; ifa++) {
 			int slot = faSlot(ifa);
 			if (channel_mask[slot-1]) {
-				faReadScalers(slot, (volatile unsigned int *)&data2[ifa], 0xffff, iFlag);
+				faReadScalers(slot, data2[ifa], 0xffff, iFlag);
 				if (DEBUG>3) { // printf the second read
 					printf("Mod %2i   ", faSlot(ifa));
 					for (chan=0; chan<=16; chan++) {
