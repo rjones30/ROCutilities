@@ -2,8 +2,9 @@
 *.a
 *.o
 *.so
+*.old
+*.log
 /vme/f1tdc
-/vme/fadc.old
 /vme/clas12-coda
 /vme/fa125
 /vme/jvme
