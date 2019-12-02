@@ -24,10 +24,10 @@ extern int nfadc;
 int 
 main(int argc, char *argv[]) 
 {
-	int DEBUG=4;
+	//int DEBUG=4;
 
 	unsigned int data1[FA_MAX_BOARDS][17];
-	unsigned int data2[FA_MAX_BOARDS][17];
+	//unsigned int data2[FA_MAX_BOARDS][17];
 
 	int stat;
 
@@ -62,7 +62,7 @@ main(int argc, char *argv[])
 
 	while (1) {
 		for(ifa=0; ifa<nfadc; ifa++) {
-			faReadScalers(faSlot(ifa), &data1[ifa], 0xffff, iFlag);
+			faReadScalers(faSlot(ifa), data1[ifa], 0xffff, iFlag);
 			printf("Mod %2i   ", faSlot(ifa));
 			for (chan=0; chan<=16; chan++) {
 				if (chan==8) printf("\n         ");
