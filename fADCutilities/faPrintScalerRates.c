@@ -62,7 +62,7 @@ main(int argc, char *argv[])
 
 	while (1) {
 		for(ifa=0; ifa<nfadc; ifa++) {
-			faReadScalers(faSlot(ifa), &data1[ifa], 0xffff, iFlag);
+			faReadScalers(faSlot(ifa), data1[ifa], 0xffff, iFlag);
 			if (DEBUG>2) { // print the first read
 				printf("Mod %2i   ", faSlot(ifa));
 				for (chan=0; chan<=16; chan++) {
@@ -76,7 +76,7 @@ main(int argc, char *argv[])
 		sleep(1);
 		// loop over modules to read scalers 
 		for(ifa=0; ifa<nfadc; ifa++) {
-			faReadScalers(faSlot(ifa), &data2[ifa], 0xffff, iFlag);
+			faReadScalers(faSlot(ifa), data2[ifa], 0xffff, iFlag);
 			if (DEBUG>3) { // printf the second read
 				printf("Mod %2i   ", faSlot(ifa));
 				for (chan=0; chan<=16; chan++) {
