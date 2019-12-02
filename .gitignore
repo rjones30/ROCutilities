@@ -2,7 +2,8 @@
 *.o
 *.so
 /vme/f1tdc
-/vme/fadc
+/vme/fadc.old
+/vme/clas12-coda
 /vme/fa125
 /vme/jvme
 /dscTDCutilities/ratevsthreshold_allchan
@@ -26,3 +27,5 @@
 /fADCutilities/faSetThresholds
 /fADCutilities/faTweakPedestals
 /fADCutilities/faCalibPedestals
+/fADCutilities/faScope
+/fADCutilities/faScope.root
