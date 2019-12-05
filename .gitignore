@@ -4,6 +4,7 @@
 *.so
 *.old
 *.log
+*.png
 /vme/f1tdc
 /vme/clas12-coda
 /vme/fa125
