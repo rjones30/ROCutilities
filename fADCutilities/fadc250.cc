@@ -71,17 +71,21 @@ int fadc250::set_dac_levels(int slot, int baseline)
     return 0;
 }
 
-int fadc250::acquire(int slot, int events, int bufsize, unsigned int *data)
+int fadc250::acquire(int slot, int events, 
+                     int bufsize, unsigned int *data,
+                     int threshold)
 {
     int pmode = 10;
     unsigned int PL = 900;
     unsigned int PTW = 500;
     unsigned int NSB = 3;
     unsigned int NSA = 15;
-    unsigned int NP = 1;
+    unsigned int NP = 4;
     unsigned int NPED = 5;
     unsigned int MAXPED = 600;
     unsigned int NSAT = 2;
+    unsigned int TET = threshold;
+    faSetThreshold(slot, TET, 0xffff);
     faSetProcMode(slot, pmode, PL, PTW, NSB, NSA, NP, NPED, MAXPED, NSAT);
     faSetTriggerStopCondition(slot, 99);
     faSetTriggerBusyCondition(slot, 99);

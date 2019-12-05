@@ -17,7 +17,7 @@ class fadc250
     fadc250();
     ~fadc250();
 
-    int acquire(int slot, int events, int bufsize, unsigned int *data);
+    int acquire(int slot, int events, int bufsize, unsigned int *data, int threshold);
     int set_dac_levels(int id, int baseline);
     void decode(unsigned int data);
     void dumpconfig();
