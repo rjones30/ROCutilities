@@ -18,14 +18,15 @@
 
 #include <TFile.h>
 #include <TTree.h>
-#include <TH1D.h>
+#include <TH1I.h>
 #include <TServerSocket.h>
 #include <TMessage.h>
 
 fadc250 factrl;
 
 TTree *tree1 = 0;
-TH1D *trace[16] = {0};
+TH1I *trace[16] = {0};
+TH1I *pulse[16] = {0};
 
 TServerSocket *sock = 0;
 
@@ -63,10 +64,34 @@ void build_tree1(TTree *tree1)
 
 int decode(int dlen, unsigned int *data)
 {
+    for (int i=0; i<16; ++i) {
+        trace[i]->Reset();
+        pulse[i]->Reset();
+    }
+
+    // parameters stored in the pulse "histogram" are:
+    // bin 1: event number (1-255)
+    // bin 2: channel number (consistency check)
+    // bin 3: quality factor (0 for good, 1 for questionable)
+    // bin 4: pedestal sum
+    // bin 5: number of pulses found (1-4)
+    // bin 6: pulse 1 integral (0-256k)
+    // bin 7: pulse 1 late (1=overlaps with end of window, 0=no overlap)
+    // bin 8: pulse 1 overflows (1=contains overflows, 0=no overflows)
+    // bin 9: pulse 1 underflows (1=contains underflows, 0=no underflows)
+    // bin 10: pulse 1 width (samples, 1-511)
+    // bin 11: pulse 1 leading edge time (units of 62.5 ps)
+    // bin 12: pulse 1 peak value (0-4095)
+    // bin 13: pulse 1 peak outside window (1=outside, 0=inside)
+    // bin 14: pulse 1 peak not found (1=failed, 0=ok)
+    // bin 15: pulse 1 baseline is high (1=above TET or MAXPED, 0=ok)
+    // bin 16...: repetitions of bins 6-14 for pulses 2..npulses
+
     int events=0;
     int event=0;
     int crate=0;
     int slot=0;
+    int eseq=0;
     int chan=0;
     int tA, tB, tC, tD, tE, tF;
     trow.nhit = 0;
@@ -97,12 +122,43 @@ int decode(int dlen, unsigned int *data)
         }
         else if ((hdr & 0xf8000000) == 0xc8000000) {
             // pulse parameter 1
+            eseq = ((hdr & 0x7f80000) >> 19);
+            chan = ((hdr & 0x78000) >> 15);
+            int qf = ((hdr & 0x4000) >> 14);
+            int pedsum = (hdr & 0x3fff);
+            pulse[chan]->SetBinContent(1, eseq);
+            pulse[chan]->SetBinContent(2, chan);
+            pulse[chan]->SetBinContent(3, qf);
+            pulse[chan]->SetBinContent(4, pedsum);
+            pulse[chan]->SetBinContent(5, 0);
         }
         else if ((hdr & 0xc0000000) == 0x40000000) {
             // pulse parameter 2
-        }
-        else if ((hdr & 0xc0000000) == 0x00000000) {
+            int pint = ((hdr & 0x3ffff000) >> 12);
+            int late = ((hdr & 0x800) >> 11);
+            int oflow = ((hdr & 0x400) >> 10);
+            int uflow = ((hdr & 0x200) >> 9);
+            int pwidth = (hdr & 0x1ff);
+            int npeak = int(pulse[chan]->GetBinContent(5));
+            pulse[chan]->SetBinContent(6 + 10*npeak, pint);
+            pulse[chan]->SetBinContent(7 + 10*npeak, late);
+            pulse[chan]->SetBinContent(8 + 10*npeak, oflow);
+            pulse[chan]->SetBinContent(9 + 10*npeak, uflow);
+            pulse[chan]->SetBinContent(10 + 10*npeak, pwidth);
+ 
             // pulse parameter 3
+            int ppar3 = bswap_32(data[++i]);
+            int pt = ((ppar3 & 0x3fff8000) >> 15);
+            int pv = ((ppar3 & 0x00007ff8) >> 3);
+            int pout = ((ppar3 & 0x00000004) >> 2);
+            int pbad = ((ppar3 & 0x00000002) >> 1);
+            int phigh = (ppar3 & 0x00000001);
+            pulse[chan]->SetBinContent(11 + 10*npeak, pt);
+            pulse[chan]->SetBinContent(12 + 10*npeak, pv);
+            pulse[chan]->SetBinContent(13 + 10*npeak, pout);
+            pulse[chan]->SetBinContent(14 + 10*npeak, pbad);
+            pulse[chan]->SetBinContent(15 + 10*npeak, phigh);
+            pulse[chan]->SetBinContent(5, ++npeak);
         }
         else if ((hdr & 0xf8000000) == 0xb0000000) {
             // raw pulse window
@@ -113,18 +169,16 @@ int decode(int dlen, unsigned int *data)
         else if ((hdr & 0xf8000000) == 0xf8000000) {
             // filler word
         }
-        else if ((hdr & 0xf8000000) == 0xa0000000 ||
-                 (hdr & 0xf8000000) == 0xf0000000) {
+        else if ((hdr & 0xf8000000) == 0xa0000000) {
             chan = ((hdr & 0x7800000) >> 23);
-            int nsamples = (hdr & 0xfff);
+            int nsamples = (hdr & 0x1ff) - 1;
             int n = trow.nhit++;
             trow.hcrate[n] = crate;
             trow.hslot[n] = slot;
             trow.hch[n] = chan;
-            trace[chan]->Reset();
             trow.nsamp[n] = nsamples;
             int istart = i+1;
-            int istop = istart + nsamples/2;
+            int istop = istart + (nsamples+1)/2;
             int invalid = 0;
             int overflow = 0;
             for (i=istart; i<istop; ++i) {
@@ -140,6 +194,7 @@ int decode(int dlen, unsigned int *data)
                 trace[chan]->Fill(8*(i-istart), adc0);
                 trace[chan]->Fill(8*(i-istart)+4, adc1);
             }
+            --i;
             trow.invalid[n] = invalid;
             trow.overflow[n] = overflow;
             if (trow.nhit == 16) {
@@ -153,8 +208,14 @@ int decode(int dlen, unsigned int *data)
             int scalers = (hdr & 0x3f);
             i += scalers;
         }
+        else if ((hdr & 0xf8000000) == 0xe8000000) {
+            // event trailer
+        }
+        else if ((hdr & 0xf8000000) == 0x88000000) {
+            // block trailer
+        }
         else {
-            printf("skipping %x:", hdr);
+            printf("skipping %x followed by %x:", hdr, bswap_32(data[i+1]));
             factrl.decode(hdr);
         }
     }
@@ -183,20 +244,29 @@ int main(int argc, char *argv[])
         std::stringstream name;
         name << "t" << i;
         std::stringstream title;
-        title << "slot " << slot << " channel " << channel;
-        trace[i] = new TH1D(name.str().c_str(), title.str().c_str(),
+        title << "trace from slot " << slot << " channel " << channel;
+        trace[i] = new TH1I(name.str().c_str(), title.str().c_str(),
                             500, 0, 2000);
         trace[i]->SetStats(0);
         trace[i]->GetXaxis()->SetTitle("t (ns)");
         trace[i]->GetYaxis()->SetTitle("V (adc)");
         trace[i]->GetYaxis()->SetTitleOffset(1.4);
+        title << "pulse parameters from slot " 
+              << slot << " channel " << channel;
+        pulse[i] = new TH1I(name.str().c_str(), title.str().c_str(),
+                            100, 0, 100);
+        pulse[i]->SetStats(0);
+        pulse[i]->GetXaxis()->SetTitle("parameter (see faScope.cc)");
+        pulse[i]->GetYaxis()->SetTitle("value");
+        pulse[i]->GetYaxis()->SetTitleOffset(1.4);
     }
 
-    int events = 28;
+    int tet = 150;
+    int events = 1;
     int bufsize = events * 4100;
     unsigned int *data = (unsigned int *)malloc(bufsize * sizeof(int));
     for (int i=0; i<nevents || nevents==0; i+=events) {
-        int nrec = factrl.acquire(slot, events, bufsize, data);
+        int nrec = factrl.acquire(slot, events, bufsize, data, tet);
         decode(nrec, data);
         if (nevents == 0) {
             if (sock == 0)
@@ -204,6 +274,7 @@ int main(int argc, char *argv[])
             TSocket *conn = sock->Accept();
             TMessage msg(kMESS_OBJECT);
             msg.WriteObject(trace[channel]);
+            msg.WriteObject(pulse[channel]);
             conn->Send(msg);
         }
     }
