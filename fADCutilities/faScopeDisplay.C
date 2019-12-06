@@ -1,3 +1,31 @@
+//
+// faScopeDisplay.C - root macro to display raw-mode (mode 10) traces 
+//                    from a fadc250 module in a frontend vme crate,
+//                    acting as a client communicating with a faScope
+//                    server running on a frontend roc.
+//
+// author: richard.t.jones at uconn.edu
+// version: december 5, 2019
+//
+// Usage:
+//        $ root -l
+//        [root] .x faScopeDisplay.C++
+//        ... see faScope traces appear in the graphcs window,
+//        ... press the NEXT button in the upper left corner of
+//        ... the graphics window to advance to the next trace,
+//        ... then double click anywhere in the graphics window
+//        ... (not on the NEXT button) to exit the loop.
+//
+// Notes:
+// 1. faScopeDisplay needs to run in an interactive root session running
+//    a version of root that is binary compatible with what was used to
+//    build and run the faScope frontend server. It was tested using
+//    root v5.34, which is the most recent build of root that I could find
+//    on the roc. If there is a mismatch between the versions of root used
+//    to build faScope and to run faScopeDisplay, the transfer of objects
+//    over the network connection will not work!!
+//
+
 #include <iostream>
 
 #include <TROOT.h>
@@ -10,7 +38,7 @@
 
 TH1I *histo=0;
 TH1I *pulse=0;
-TButton *next=0;
+TButton *nextbut=0;
 TSocket *sock=0;
 std::string crate("roctagm1");
 
@@ -98,8 +126,8 @@ void faScopeDisplay(int firstbin=1, int lastbin=500)
                 c1->Update();
             }
         }
-        next = new TButton("next","faScopeNext()",.02,.92,.12,.98);
-        next->Draw();
+        nextbut = new TButton("next","faScopeNext()",.02,.92,.12,.98);
+        nextbut->Draw();
         delete msg;
     }
     if (sock) {
@@ -110,16 +138,16 @@ void faScopeDisplay(int firstbin=1, int lastbin=500)
     gPad->WaitPrimitive();
     firstbin = histo->GetXaxis()->GetFirst();
     lastbin = histo->GetXaxis()->GetLast();
-    if (next == 0) {
+    if (nextbut == 0) {
         return faScopeDisplay(firstbin, lastbin);
     }
 }
 
 void faScopeNext()
 {
-    if (next) {
-        delete next;
-        next = 0;
+    if (nextbut) {
+        delete nextbut;
+        nextbut = 0;
     }
     //faScopeDisplay(firstbin, lastbin);
 }

@@ -6,7 +6,6 @@
 // version: november 27, 2019
 //
 
-
 #include <iostream>
 #include <stdexcept>
 #include <sstream>

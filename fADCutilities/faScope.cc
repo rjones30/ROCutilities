@@ -2,11 +2,22 @@
 // faScope - a virtual oscilloscope utility for interactive display
 //           of traces collected by the Jlab fadc250 vme module.
 //           Traces are collected on a frontend roc are saved in a
-//           root tree for immediate display on one of the gluon
-//           machines.
+//           root tree, and also made available via a network socket.
 //
 // author: richard.t.jones at uconn.edu
 // version: november 27, 2019
+//
+// Usage:
+//        $ ./faScope 3 5 1000  # collects 1000 traces from slot 3, channel 5
+//        $ ./faScope 3 5       # starts a server and listens on port 47000
+//
+// Notes:
+//  1. If run without a third argument (the number of events requested),
+//     faScope listens for an incoming connection on port 47000 and
+//     responds to requests for raw mode data from the client.
+//  2. faScopeDisplay.C is a special client that runs in an interactive
+//     root session on another machine, and connects back to faScope over
+//     the network to acuqire and display traces received from the frontend.
 //
 
 #include <iostream>
