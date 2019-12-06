@@ -14,7 +14,14 @@ TButton *next=0;
 TSocket *sock=0;
 std::string crate("roctagm1");
 
-TLine *line[16] = {0};
+unsigned int PTW = 500;
+unsigned int NSB = 3;
+unsigned int NSA = 15;
+unsigned int NP = 4;
+unsigned int NPED = 5;
+unsigned int MAXPED = 600;
+unsigned int NSAT = 2;
+
 TCanvas *c1 = new TCanvas("c1", "faScope", 10, 50, 600, 500);
 //TCanvas *c2 = new TCanvas("c2", "pulse parameters", 10, 650, 600, 500);
 TCanvas *c2 = 0;
@@ -59,12 +66,29 @@ void faScopeDisplay(int firstbin=1, int lastbin=500)
                 int tout = int(pulse->GetBinContent(13+p*10));
                 int bogus = int(pulse->GetBinContent(14+p*10));
                 int pedbad = int(pulse->GetBinContent(15+p*10));
-                if (line[p])
-                    delete line[p];
+                static TH1I *hpulse[4] = {0,0,0,0};
+                if (hpulse[p])
+                    delete hpulse[p];
+                hpulse[p] = (TH1I*)histo->Clone();
+                hpulse[p]->SetFillColor(kRed-10);
+                hpulse[p]->GetXaxis()->SetRangeUser(time/16.-NSB*4, time/16.+NSA*4);
+                hpulse[p]->Draw("same");
+                static TLine *line1[4] = {0,0,0,0};
+                if (line1[p])
+                    delete line1[p];
                 double ymin = histo->GetMinimum();
-                line[p] = new TLine(time/16., ymin, time/16., peak);
-                line[p]->SetLineColor(kRed);
-                line[p]->Draw();
+                line1[p] = new TLine(time/16., ymin, time/16., peak);
+                line1[p]->SetLineColor(kRed);
+                line1[p]->Draw();
+                static TLine *line2[4] = {0,0,0,0};
+                if (line2[p])
+                    delete line2[p];
+                line2[p] = new TLine(time/16.-36, pedsum/(NPED+1e-99),
+                                     time/16., pedsum/(NPED+1e-99));
+                if (pedbad == 0)
+                    line2[p]->SetLineColor(kRed);
+                line2[p]->SetLineWidth(5);
+                line2[p]->Draw();
             }
             if (c2) {
                 c2->cd();
