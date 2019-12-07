@@ -23,7 +23,7 @@ while [[ $t -lt 1000 ]]; do
     tend=`expr $t + \( $dt \* 9 \)`
     ../ratevsthreshold_allchan $t $tend $dt
     for fn in `ls *_[0-9][0-9]h[0-9][0-9]_s[0-9][0-9]c[0-9][0-9].txt`; do
-        suffix=`echo $fn | awk -F_ '{print $4}'`
+        suffix=`echo $fn | awk -F_ '{print $5}'`
         newname=`echo $fn | sed s/$suffix/tt$t/`
         mv $fn $newname
     done
@@ -31,4 +31,4 @@ while [[ $t -lt 1000 ]]; do
     dt=`expr $dt \* 2`
 done
 
-python ../ratevsthreshold_collect.py `ls *_s04c00.txt | awk -F_ '{print $4}'` | tee threshold_scan.log
+python ../ratevsthreshold_collect.py `ls *_s04c00.txt | awk -F_ '{print $4"_"$5}'` | tee threshold_scan.log
