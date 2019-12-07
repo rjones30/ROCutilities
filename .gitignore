@@ -9,11 +9,14 @@
 /vme/clas12-coda
 /vme/fa125
 /vme/jvme
+/dscTDCutilities/threshold_scans
 /dscTDCutilities/ratevsthreshold_allchan
 /dscTDCutilities/vmeDSCGetThresholds
 /dscTDCutilities/vmeDSCPrintScalerRates
 /dscTDCutilities/vmeDSCPrintShmemRates
 /dscTDCutilities/vmeDSCPrintThresholds
+/dscTDCutilities/vmeDSCLibTest
+/dscTDCutilities/vmeDSCSetSerialInfo
 /dscTDCutilities/vmeDSCReadoutTest
 /dscTDCutilities/vmeDSCSetThresholds
 /fADCutilities/faCheckPedestals
