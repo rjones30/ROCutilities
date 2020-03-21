@@ -17,7 +17,7 @@
 //     responds to requests for raw mode data from the client.
 //  2. faScopeDisplay.C is a special client that runs in an interactive
 //     root session on another machine, and connects back to faScope over
-//     the network to acuqire and display traces received from the frontend.
+//     the network to acquire and display traces received from the frontend.
 //
 
 #include <iostream>
@@ -245,7 +245,11 @@ int main(int argc, char *argv[])
     if (argc > 3)
         nevents = std::atoi(argv[3]);
 
-    factrl.set_dac_levels(slot, 100);
+    for (int s=3; s<11; ++s) {
+       factrl.set_dac_levels(s, 400);
+       printf("slot %d initialized\n", s);
+    }
+    exit(0);
 
     TFile fout("faScope.root", "recreate");
     tree1 = new TTree("tree1", "TAGM FADC tree");
@@ -272,7 +276,7 @@ int main(int argc, char *argv[])
         pulse[i]->GetYaxis()->SetTitleOffset(1.4);
     }
 
-    int tet = 150;
+    int tet = 0;
     int events = 1;
     int bufsize = events * 4100;
     unsigned int *data = (unsigned int *)malloc(bufsize * sizeof(int));

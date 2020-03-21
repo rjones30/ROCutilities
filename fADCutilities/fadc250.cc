@@ -21,7 +21,7 @@ fadc250::fadc250()
     }
 
     int iFlag = 0;
-    //iFlag = FA_INIT_SKIP;
+    iFlag = FA_INIT_SKIP;
     //iFlag |= FA_INIT_SKIP_FIRMWARE_CHECK;
     iFlag |= FA_INIT_SOFT_TRIG;
 
@@ -84,7 +84,8 @@ int fadc250::acquire(int slot, int events,
     unsigned int MAXPED = 600;
     unsigned int NSAT = 2;
     unsigned int TET = threshold;
-    faSetThreshold(slot, TET, 0xffff);
+    if (TET > 0)
+        faSetThreshold(slot, TET, 0xffff);
     faSetProcMode(slot, pmode, PL, PTW, NSB, NSA, NP, NPED, MAXPED, NSAT);
     faSetTriggerStopCondition(slot, 99);
     faSetTriggerBusyCondition(slot, 99);
